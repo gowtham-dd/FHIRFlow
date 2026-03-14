@@ -21,3 +21,6 @@ websockets
 pandas
 numpy
 gunicorn
+langsmith
+deepeval
+langchain_ollama

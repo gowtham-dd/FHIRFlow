@@ -479,141 +479,141 @@ Your response must be valid JSON only, no other text.
     def generate_sample_claims(self) -> List[Dict]:
         """Generate sample claims for testing including wrong claims"""
         return [
-            # ===== CORRECT CLAIMS (Should be APPROVED) =====
-            {
-                "id": "claim001_correct",
-                "patient_id": "pat001",
-                "code": "J3420",
-                "description": "Vitamin B12 injection, 500mcg",
-                "dose": 500,
-                "units": 1,
-                "date_of_service": "2026-03-15",
-                "provider": "prat002",
-                "diagnosis": "E53.8",
-                "charge_amount": 85.00
-            },
-            {
-                "id": "claim002_correct",
-                "patient_id": "pat003",
-                "code": "82652",
-                "description": "Vitamin D test with deficiency",
-                "date_of_service": "2026-03-12",
-                "provider": "prat002",
-                "diagnosis": "E55.9",  # Correct diagnosis for deficiency
-                "charge_amount": 45.00
-            },
+        #     # ===== CORRECT CLAIMS (Should be APPROVED) =====
+        #     {
+        #         "id": "claim001_correct",
+        #         "patient_id": "pat001",
+        #         "code": "J3420",
+        #         "description": "Vitamin B12 injection, 500mcg",
+        #         "dose": 500,
+        #         "units": 1,
+        #         "date_of_service": "2026-03-15",
+        #         "provider": "prat002",
+        #         "diagnosis": "E53.8",
+        #         "charge_amount": 85.00
+        #     },
+        #     {
+        #         "id": "claim002_correct",
+        #         "patient_id": "pat003",
+        #         "code": "82652",
+        #         "description": "Vitamin D test with deficiency",
+        #         "date_of_service": "2026-03-12",
+        #         "provider": "prat002",
+        #         "diagnosis": "E55.9",  # Correct diagnosis for deficiency
+        #         "charge_amount": 45.00
+        #     },
             
-            # ===== WRONG CLAIMS (Should be REJECTED) =====
+        #     # ===== WRONG CLAIMS (Should be REJECTED) =====
             
-            # Wrong Claim 1: Dose too high (1500mcg > 1000mcg limit)
-            {
-                "id": "claim003_wrong_dose",
-                "patient_id": "pat001",
-                "code": "J3420",
-                "description": "Vitamin B12 injection, 1500mcg",
-                "dose": 1500,
-                "units": 1,
-                "date_of_service": "2026-03-16",
-                "provider": "prat002",
-                "diagnosis": "E53.8",
-                "charge_amount": 85.00
-            },
+        #     # Wrong Claim 1: Dose too high (1500mcg > 1000mcg limit)
+        #     {
+        #         "id": "claim003_wrong_dose",
+        #         "patient_id": "pat001",
+        #         "code": "J3420",
+        #         "description": "Vitamin B12 injection, 1500mcg",
+        #         "dose": 1500,
+        #         "units": 1,
+        #         "date_of_service": "2026-03-16",
+        #         "provider": "prat002",
+        #         "diagnosis": "E53.8",
+        #         "charge_amount": 85.00
+        #     },
             
-            # Wrong Claim 2: Exceeds visit limit (already had 2 PT visits)
-            {
-                "id": "claim004_wrong_limit",
-                "patient_id": "pat002",
-                "code": "97110",
-                "description": "Physical therapy session",
-                "units": 1.5,
-                "date_of_service": "2026-03-20",
-                "provider": "prat001",
-                "diagnosis": "M54.5",
-                "charge_amount": 120.00
-            },
+        #     # Wrong Claim 2: Exceeds visit limit (already had 2 PT visits)
+        #     {
+        #         "id": "claim004_wrong_limit",
+        #         "patient_id": "pat002",
+        #         "code": "97110",
+        #         "description": "Physical therapy session",
+        #         "units": 1.5,
+        #         "date_of_service": "2026-03-20",
+        #         "provider": "prat001",
+        #         "diagnosis": "M54.5",
+        #         "charge_amount": 120.00
+        #     },
             
-            # Wrong Claim 3: Wrong diagnosis for Vitamin D test (no deficiency code)
-            {
-                "id": "claim005_wrong_diagnosis",
-                "patient_id": "pat003",
-                "code": "82652",
-                "description": "Vitamin D test",
-                "date_of_service": "2026-03-18",
-                "provider": "prat002",
-                "diagnosis": "Z13.6",  # Screening, not deficiency
-                "charge_amount": 45.00
-            },
+        #     # Wrong Claim 3: Wrong diagnosis for Vitamin D test (no deficiency code)
+        #     {
+        #         "id": "claim005_wrong_diagnosis",
+        #         "patient_id": "pat003",
+        #         "code": "82652",
+        #         "description": "Vitamin D test",
+        #         "date_of_service": "2026-03-18",
+        #         "provider": "prat002",
+        #         "diagnosis": "Z13.6",  # Screening, not deficiency
+        #         "charge_amount": 45.00
+        #     },
             
-            # Wrong Claim 4: Patient doesn't exist
-            {
-                "id": "claim006_wrong_patient",
-                "patient_id": "pat999",
-                "code": "J3420",
-                "description": "Vitamin B12 injection, 500mcg",
-                "dose": 500,
-                "units": 1,
-                "date_of_service": "2026-03-17",
-                "provider": "prat002",
-                "diagnosis": "E53.8",
-                "charge_amount": 85.00
-            },
+        #     # Wrong Claim 4: Patient doesn't exist
+        #     {
+        #         "id": "claim006_wrong_patient",
+        #         "patient_id": "pat999",
+        #         "code": "J3420",
+        #         "description": "Vitamin B12 injection, 500mcg",
+        #         "dose": 500,
+        #         "units": 1,
+        #         "date_of_service": "2026-03-17",
+        #         "provider": "prat002",
+        #         "diagnosis": "E53.8",
+        #         "charge_amount": 85.00
+        #     },
             
-            # Wrong Claim 5: Invalid procedure code
-            {
-                "id": "claim007_wrong_code",
-                "patient_id": "pat001",
-                "code": "INVALID",
-                "description": "Unknown procedure",
-                "dose": 1,
-                "units": 1,
-                "date_of_service": "2026-03-19",
-                "provider": "prat002",
-                "diagnosis": "E53.8",
-                "charge_amount": 999.99
-            },
+        #     # Wrong Claim 5: Invalid procedure code
+        #     {
+        #         "id": "claim007_wrong_code",
+        #         "patient_id": "pat001",
+        #         "code": "INVALID",
+        #         "description": "Unknown procedure",
+        #         "dose": 1,
+        #         "units": 1,
+        #         "date_of_service": "2026-03-19",
+        #         "provider": "prat002",
+        #         "diagnosis": "E53.8",
+        #         "charge_amount": 999.99
+        #     },
             
-            # Wrong Claim 6: Missing prior authorization for high dose
-            {
-                "id": "claim008_wrong_pa",
-                "patient_id": "pat001",
-                "code": "J3420",
-                "description": "Vitamin B12 injection, 1200mcg",
-                "dose": 1200,
-                "units": 1,
-                "date_of_service": "2026-03-21",
-                "provider": "prat002",
-                "diagnosis": "E53.8",
-                "prior_auth": False,  # Missing PA
-                "charge_amount": 85.00
-            },
+        #     # Wrong Claim 6: Missing prior authorization for high dose
+        #     {
+        #         "id": "claim008_wrong_pa",
+        #         "patient_id": "pat001",
+        #         "code": "J3420",
+        #         "description": "Vitamin B12 injection, 1200mcg",
+        #         "dose": 1200,
+        #         "units": 1,
+        #         "date_of_service": "2026-03-21",
+        #         "provider": "prat002",
+        #         "diagnosis": "E53.8",
+        #         "prior_auth": False,  # Missing PA
+        #         "charge_amount": 85.00
+        #     },
             
-            # Wrong Claim 7: Duplicate claim (same as claim001)
-            {
-                "id": "claim009_duplicate",
-                "patient_id": "pat001",
-                "code": "J3420",
-                "description": "Vitamin B12 injection, 500mcg",
-                "dose": 500,
-                "units": 1,
-                "date_of_service": "2026-03-15",  # Same date as claim001
-                "provider": "prat002",
-                "diagnosis": "E53.8",
-                "charge_amount": 85.00
-            },
+        #     # Wrong Claim 7: Duplicate claim (same as claim001)
+        #     {
+        #         "id": "claim009_duplicate",
+        #         "patient_id": "pat001",
+        #         "code": "J3420",
+        #         "description": "Vitamin B12 injection, 500mcg",
+        #         "dose": 500,
+        #         "units": 1,
+        #         "date_of_service": "2026-03-15",  # Same date as claim001
+        #         "provider": "prat002",
+        #         "diagnosis": "E53.8",
+        #         "charge_amount": 85.00
+        #     },
             
-            # Wrong Claim 8: Excessive units
-            {
-                "id": "claim010_wrong_units",
-                "patient_id": "pat001",
-                "code": "J3420",
-                "description": "Vitamin B12 injection",
-                "dose": 500,
-                "units": 10,  # 10 units in one day
-                "date_of_service": "2026-03-22",
-                "provider": "prat002",
-                "diagnosis": "E53.8",
-                "charge_amount": 850.00
-            },
+        #     # Wrong Claim 8: Excessive units
+        #     {
+        #         "id": "claim010_wrong_units",
+        #         "patient_id": "pat001",
+        #         "code": "J3420",
+        #         "description": "Vitamin B12 injection",
+        #         "dose": 500,
+        #         "units": 10,  # 10 units in one day
+        #         "date_of_service": "2026-03-22",
+        #         "provider": "prat002",
+        #         "diagnosis": "E53.8",
+        #         "charge_amount": 850.00
+        #     },
         ]
     
     def route_decision(self, decision: Dict) -> str:
