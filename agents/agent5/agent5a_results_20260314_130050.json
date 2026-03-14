@@ -1,0 +1,87 @@
+{
+  "timestamp": "2026-03-14T13:00:50.500629",
+  "claims_processed": 5,
+  "submission_status": {
+    "successful": 5,
+    "failed": 0
+  },
+  "results": [
+    {
+      "claim_id": "claim001",
+      "patient_id": "pat001",
+      "procedure_code": "J3420",
+      "decision_summary": {
+        "reasoning": "The claim meets all policy rules and criteria. The patient is receiving routine prophylaxis for hemo...",
+        "policy_citations_count": 2
+      },
+      "edi_filename": "edi_output/837_claim001_20260314_130050.edi",
+      "submission_status": "accepted",
+      "acknowledgement": "997_ack_received",
+      "submission_id": "SUB20260314130050_proc001",
+      "submitted_at": "2026-03-14T13:00:50.426838",
+      "edi_content_preview": "ISA*00*          *00*          *ZZ*PROVIDER123    *ZZ*UHC87726       *260314*1300*U*00401*006826721*0*P*:~\nGS*HC*PROVIDER123*UHC87726*20260314*1300*873538*X*004010X098A1~\nST*837*0001~\nBHT*0019*00*proc..."
+    },
+    {
+      "claim_id": "claim002",
+      "patient_id": "pat001",
+      "procedure_code": "J3420",
+      "decision_summary": {
+        "reasoning": "The claim meets all policy requirements. The patient is receiving routine prophylaxis for hemophilia...",
+        "policy_citations_count": 2
+      },
+      "edi_filename": "edi_output/837_claim002_20260314_130050.edi",
+      "submission_status": "accepted",
+      "acknowledgement": "997_ack_received",
+      "submission_id": "SUB20260314130050_proc001",
+      "submitted_at": "2026-03-14T13:00:50.442841",
+      "edi_content_preview": "ISA*00*          *00*          *ZZ*PROVIDER123    *ZZ*UHC87726       *260314*1300*U*00401*917025462*0*P*:~\nGS*HC*PROVIDER123*UHC87726*20260314*1300*873538*X*004010X098A1~\nST*837*0001~\nBHT*0019*00*proc..."
+    },
+    {
+      "claim_id": "claim003",
+      "patient_id": "pat002",
+      "procedure_code": "97110",
+      "decision_summary": {
+        "reasoning": "The claim is for a valid CPT code (97110) and does not require prior authorization. The patient's me...",
+        "policy_citations_count": 2
+      },
+      "edi_filename": "edi_output/837_claim003_20260314_130050.edi",
+      "submission_status": "accepted",
+      "acknowledgement": "997_ack_received",
+      "submission_id": "SUB20260314130050_claim003",
+      "submitted_at": "2026-03-14T13:00:50.455377",
+      "edi_content_preview": "ISA*00*          *00*          *ZZ*PROVIDER123    *ZZ*UHC87726       *260314*1300*U*00401*895794902*0*P*:~\nGS*HC*PROVIDER123*UHC87726*20260314*1300*086185*X*004010X098A1~\nST*837*0001~\nBHT*0019*00*clai..."
+    },
+    {
+      "claim_id": "claim004",
+      "patient_id": "pat003",
+      "procedure_code": "82652",
+      "decision_summary": {
+        "reasoning": "The claim for Vitamin D, 25-hydroxy, test (code 82652) is medically necessary and covered under Medi...",
+        "policy_citations_count": 2
+      },
+      "edi_filename": "edi_output/837_claim004_20260314_130050.edi",
+      "submission_status": "accepted",
+      "acknowledgement": "997_ack_received",
+      "submission_id": "SUB20260314130050_claim004",
+      "submitted_at": "2026-03-14T13:00:50.470017",
+      "edi_content_preview": "ISA*00*          *00*          *ZZ*PROVIDER123    *ZZ*UHC87726       *260314*1300*U*00401*968769644*0*P*:~\nGS*HC*PROVIDER123*UHC87726*20260314*1300*737912*X*004010X098A1~\nST*837*0001~\nBHT*0019*00*clai..."
+    },
+    {
+      "claim_id": "claim005",
+      "patient_id": "pat002",
+      "procedure_code": "J3420",
+      "decision_summary": {
+        "reasoning": "The claim meets all policy rules and criteria. The patient is receiving routine prophylaxis for hemo...",
+        "policy_citations_count": 2
+      },
+      "edi_filename": "edi_output/837_claim005_20260314_130050.edi",
+      "submission_status": "accepted",
+      "acknowledgement": "997_ack_received",
+      "submission_id": "SUB20260314130050_proc002",
+      "submitted_at": "2026-03-14T13:00:50.486122",
+      "edi_content_preview": "ISA*00*          *00*          *ZZ*PROVIDER123    *ZZ*UHC87726       *260314*1300*U*00401*159230566*0*P*:~\nGS*HC*PROVIDER123*UHC87726*20260314*1300*836096*X*004010X098A1~\nST*837*0001~\nBHT*0019*00*proc..."
+    }
+  ],
+  "next_agent": "none",
+  "message": "Claims submitted to payer, awaiting response"
+}

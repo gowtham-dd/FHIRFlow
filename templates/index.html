@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Healthcare Claims Dashboard - LangGraph Multi-Agent Workflow</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        #loadingOverlay {
+            position:fixed;top:0;left:0;width:100%;height:100%;
+            background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+            display:none;justify-content:center;align-items:flex-start;
+            z-index:9999;overflow-y:auto;padding:2rem 1rem;
+        }
+        .loading-container {
+            max-width:820px;width:100%;background:rgba(255,255,255,0.97);
+            border-radius:24px;padding:2rem;margin:auto;
+            box-shadow:0 25px 50px -12px rgba(0,0,0,0.35);animation:slideUp 0.4s ease;
+        }
+        @keyframes slideUp{from{opacity:0;transform:translateY(30px);}to{opacity:1;transform:translateY(0);}}
+        .progress-container{width:100%;height:10px;background:#e5e7eb;border-radius:9999px;margin:1.5rem 0;overflow:hidden;}
+        .progress-bar{height:100%;background:linear-gradient(90deg,#3b82f6,#8b5cf6);border-radius:9999px;transition:width 0.6s ease;width:0%;}
+        .agent-flow{display:flex;align-items:center;justify-content:space-between;margin:1.5rem 0;position:relative;padding:0 10px;}
+        .agent-flow::before{content:'';position:absolute;top:38px;left:60px;right:60px;height:3px;background:linear-gradient(90deg,#e5e7eb,#3b82f6,#8b5cf6,#e5e7eb);z-index:0;border-radius:3px;}
+        .agent-node{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;flex:1;}
+        .agent-icon{width:76px;height:76px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.75rem;margin-bottom:.6rem;transition:all 0.3s ease;box-shadow:0 8px 12px -3px rgba(0,0,0,0.1);}
+        .agent-icon.pending {background:#f3f4f6;color:#9ca3af;border:3px solid #e5e7eb;}
+        .agent-icon.active  {background:#3b82f6;color:white;border:3px solid #93c5fd;animation:pulse 1.5s infinite;}
+        .agent-icon.complete{background:#10b981;color:white;border:3px solid #a7f3d0;}
+        .agent-icon.error   {background:#ef4444;color:white;border:3px solid #fca5a5;}
+        @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(59,130,246,0.7);}70%{box-shadow:0 0 0 18px rgba(59,130,246,0);}100%{box-shadow:0 0 0 0 rgba(59,130,246,0);}}
+        .agent-name  {font-weight:600;color:#374151;font-size:.82rem;}
+        .agent-status{font-size:.68rem;color:#6b7280;max-width:90px;text-align:center;line-height:1.3;}
+        .agent-details{background:#f9fafb;border-radius:16px;padding:1.25rem;margin:1.25rem 0;border:1px solid #e5e7eb;}
+        .current-agent{display:flex;align-items:center;margin-bottom:.75rem;padding-bottom:.75rem;border-bottom:1px solid #e5e7eb;}
+        .current-agent-icon{width:44px;height:44px;border-radius:10px;background:#3b82f6;color:white;display:flex;align-items:center;justify-content:center;font-size:1.3rem;margin-right:.75rem;flex-shrink:0;}
+        .current-agent-name{font-weight:600;color:#1f2937;font-size:.95rem;}
+        .current-agent-message{font-size:.82rem;color:#4b5563;margin-top:.1rem;}
+        .agent-log{max-height:180px;overflow-y:auto;font-family:monospace;font-size:.7rem;background:#1f2937;color:#d1d5db;padding:.75rem;border-radius:8px;}
+        .log-entry{padding:.2rem 0;border-bottom:1px solid #374151;display:flex;gap:.4rem;flex-wrap:wrap;}
+        .log-time {color:#9ca3af;min-width:60px;}
+        .log-agent{min-width:72px;}
+        .log-agent.agent2  {color:#60a5fa;}.log-agent.agent3 {color:#34d399;}
+        .log-agent.agent4  {color:#fbbf24;}.log-agent.agent5a{color:#fb923c;}
+        .log-agent.agent5b {color:#f87171;}.log-agent.system {color:#a78bfa;}
+        .log-agent.patient {color:#4ade80;}
+        .voice-interface{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:16px;padding:1.75rem;margin-top:1.5rem;color:white;display:none;animation:fadeIn 0.5s ease;}
+        @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+        .voice-waveform{display:flex;align-items:center;justify-content:center;height:70px;gap:5px;margin:1.25rem 0;}
+        .wave-bar{width:8px;height:100%;background:rgba(255,255,255,0.3);border-radius:4px;transition:all 0.2s ease;}
+        .wave-bar.speaking{background:#fbbf24;box-shadow:0 0 16px #fbbf24;}
+        .wave-bar.listening{background:#60a5fa;box-shadow:0 0 16px #60a5fa;}
+        .wave-bar:nth-child(1){animation:w1 1s ease-in-out infinite;}
+        .wave-bar:nth-child(2){animation:w2 1s ease-in-out infinite;}
+        .wave-bar:nth-child(3){animation:w3 1s ease-in-out infinite;}
+        .wave-bar:nth-child(4){animation:w4 1s ease-in-out infinite;}
+        .wave-bar:nth-child(5){animation:w5 1s ease-in-out infinite;}
+        @keyframes w1{0%,100%{transform:scaleY(0.3);}50%{transform:scaleY(0.8);}}
+        @keyframes w2{0%,100%{transform:scaleY(0.4);}50%{transform:scaleY(1.0);}}
+        @keyframes w3{0%,100%{transform:scaleY(0.5);}50%{transform:scaleY(1.2);}}
+        @keyframes w4{0%,100%{transform:scaleY(0.6);}50%{transform:scaleY(1.4);}}
+        @keyframes w5{0%,100%{transform:scaleY(0.7);}50%{transform:scaleY(1.6);}}
+        .voice-status-row{display:flex;align-items:center;justify-content:center;gap:.75rem;margin:.75rem 0;}
+        .status-dot{width:13px;height:13px;border-radius:50%;animation:blink 1s infinite;}
+        @keyframes blink{0%,100%{opacity:1;}50%{opacity:0.3;}}
+        .status-dot.speaking {background:#fbbf24;}
+        .status-dot.listening{background:#60a5fa;}
+        .status-dot.idle     {background:#9ca3af;animation:none;}
+        .voice-transcript{background:rgba(255,255,255,0.12);border-radius:12px;padding:1rem;margin:.75rem 0;min-height:68px;font-size:.88rem;line-height:1.5;}
+        .voice-actions{display:flex;justify-content:center;gap:1rem;margin-top:1.25rem;}
+        .voice-btn{padding:.65rem 1.75rem;border-radius:9999px;font-weight:600;transition:all 0.3s ease;cursor:pointer;border:none;}
+        .voice-btn.yes{background:#10b981;color:white;}.voice-btn.yes:hover{background:#059669;}
+        .voice-btn.no {background:transparent;color:white;border:2px solid rgba(255,255,255,0.4);}.voice-btn.no:hover{background:rgba(255,255,255,0.12);}
+        .decision-card{margin-top:1.5rem;padding:1.5rem;border-radius:16px;display:none;color:white;text-align:center;animation:slideIn 0.5s ease;}
+        @keyframes slideIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+        .decision-card.approved{background:linear-gradient(135deg,#10b981,#34d399);}
+        .decision-card.rejected{background:linear-gradient(135deg,#ef4444,#f87171);}
+        .decision-card.pending {background:linear-gradient(135deg,#f59e0b,#fbbf24);}
+        .decision-title{font-size:1.25rem;font-weight:700;margin:.5rem 0;}
+        .decision-reasoning{font-size:.82rem;opacity:.9;line-height:1.5;}
+        .upload-area{border:2px dashed #d1d5db;border-radius:12px;padding:1.75rem;text-align:center;cursor:pointer;transition:all 0.3s ease;background:#f9fafb;}
+        .upload-area:hover,.upload-area.dragover{border-color:#3b82f6;background:#eff6ff;}
+        .stat-card{transition:all 0.3s ease;}
+        .stat-card:hover{transform:translateY(-4px);box-shadow:0 20px 25px -5px rgba(0,0,0,0.1);}
+        .badge{display:inline-block;padding:.15rem .55rem;border-radius:9999px;font-size:.68rem;font-weight:700;text-transform:uppercase;}
+        .badge-approved{background:#d1fae5;color:#065f46;}
+        .badge-rejected{background:#fee2e2;color:#991b1b;}
+        .badge-pending {background:#fef3c7;color:#92400e;}
+    </style>
+</head>
+<body class="bg-gray-50">
+
+<!-- WORKFLOW OVERLAY -->
+<div id="loadingOverlay">
+  <div class="loading-container">
+    <div class="flex justify-between items-center mb-1">
+      <h2 class="text-xl font-bold text-gray-800">
+        <i class="fas fa-project-diagram text-blue-500 mr-2"></i>
+        LangGraph Multi-Agent Workflow
+      </h2>
+      <button id="closeOverlayBtn" class="text-gray-400 hover:text-gray-600 text-sm transition">
+        <i class="fas fa-times"></i> Close
+      </button>
+    </div>
+    <p class="text-xs text-gray-400 mb-1" id="currentClaimId">Claim ID: —</p>
+
+    <div class="progress-container"><div class="progress-bar" id="progressBar"></div></div>
+
+    <!-- Agent pipeline -->
+    <div class="agent-flow">
+      <div class="agent-node">
+        <div class="agent-icon pending" id="agent2Icon"><i class="fas fa-search"></i></div>
+        <div class="agent-name">Agent 2</div>
+        <div class="agent-status" id="agent2Status">Policy Detector</div>
+      </div>
+      <div class="agent-node">
+        <div class="agent-icon pending" id="agent3Icon"><i class="fas fa-database"></i></div>
+        <div class="agent-name">Agent 3</div>
+        <div class="agent-status" id="agent3Status">FHIR Updater</div>
+      </div>
+      <div class="agent-node">
+        <div class="agent-icon pending" id="agent4Icon"><i class="fas fa-shield-alt"></i></div>
+        <div class="agent-name">Agent 4</div>
+        <div class="agent-status" id="agent4Status">Claim Validator</div>
+      </div>
+      <div class="agent-node">
+        <div class="agent-icon pending" id="agent5aIcon"><i class="fas fa-paper-plane"></i></div>
+        <div class="agent-name">Agent 5A</div>
+        <div class="agent-status" id="agent5aStatus">Approval Router</div>
+      </div>
+      <div class="agent-node">
+        <div class="agent-icon pending" id="agent5bIcon"><i class="fas fa-phone-alt"></i></div>
+        <div class="agent-name">Agent 5B</div>
+        <div class="agent-status" id="agent5bStatus">Voice Agent</div>
+      </div>
+    </div>
+
+    <!-- Current agent banner -->
+    <div class="agent-details">
+      <div class="current-agent">
+        <div class="current-agent-icon" id="currentAgentIcon">
+          <i class="fas fa-cog fa-spin"></i>
+        </div>
+        <div>
+          <div class="current-agent-name"    id="currentAgentName">Initializing…</div>
+          <div class="current-agent-message" id="currentAgentMessage">Waiting for workflow to start</div>
+        </div>
+      </div>
+      <div class="agent-log" id="agentLog"></div>
+    </div>
+
+    <!-- Voice interface — hidden until Agent 5B fires -->
+    <div class="voice-interface" id="voiceInterface">
+      <h3 class="text-lg font-semibold text-center mb-3">
+        <i class="fas fa-phone-alt mr-2"></i>Voice Agent — Patient Call
+      </h3>
+      <div class="voice-waveform">
+        <div class="wave-bar"></div><div class="wave-bar"></div>
+        <div class="wave-bar"></div><div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+      </div>
+      <div class="voice-status-row">
+        <div class="status-dot idle" id="voiceDot"></div>
+        <span id="voiceStatus" class="text-sm font-medium">Connecting to patient…</span>
+      </div>
+      <div class="voice-transcript" id="voiceTranscript">
+        <span class="text-white/40 italic text-sm">Waiting for transcript…</span>
+      </div>
+      <div class="voice-actions">
+        <button class="voice-btn yes" id="voiceYesBtn"><i class="fas fa-check mr-1"></i>Yes, correct it</button>
+        <button class="voice-btn no"  id="voiceNoBtn" ><i class="fas fa-times mr-1"></i>No, appeal</button>
+      </div>
+    </div>
+
+    <!-- Decision card -->
+    <div class="decision-card" id="decisionCard">
+      <div id="decisionIcon" class="text-4xl mb-2"></div>
+      <div class="decision-title"    id="decisionTitle"></div>
+      <div class="decision-reasoning" id="decisionReasoning"></div>
+    </div>
+
+    <div class="text-center mt-3 text-xs text-gray-400" id="claimCounter"></div>
+  </div>
+</div>
+
+<!-- MAIN DASHBOARD -->
+<div class="container mx-auto px-4 py-8 max-w-7xl">
+  <div class="flex justify-between items-center mb-8">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-800">Healthcare Claims Dashboard</h1>
+      <p class="text-gray-400 text-sm mt-1">LangGraph Multi-Agent CPT Claim Validation</p>
+    </div>
+    <button id="openOverlayBtn" class="hidden bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition text-sm">
+      <i class="fas fa-eye mr-1"></i>Show Workflow
+    </button>
+  </div>
+
+  <!-- Stats -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+    <div class="stat-card bg-white rounded-xl shadow-sm p-5 border-l-4 border-blue-500">
+      <p class="text-xs text-gray-500 mb-1">Total Claims</p>
+      <p id="total-claims" class="text-2xl font-bold">0</p>
+    </div>
+    <div class="stat-card bg-white rounded-xl shadow-sm p-5 border-l-4 border-green-500">
+      <p class="text-xs text-gray-500 mb-1">Approved</p>
+      <p id="approved-claims" class="text-2xl font-bold text-green-600">0</p>
+    </div>
+    <div class="stat-card bg-white rounded-xl shadow-sm p-5 border-l-4 border-red-500">
+      <p class="text-xs text-gray-500 mb-1">Rejected</p>
+      <p id="rejected-claims" class="text-2xl font-bold text-red-600">0</p>
+    </div>
+    <div class="stat-card bg-white rounded-xl shadow-sm p-5 border-l-4 border-yellow-500">
+      <p class="text-xs text-gray-500 mb-1">Open Tickets</p>
+      <p id="open-tickets" class="text-2xl font-bold text-yellow-600">0</p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Upload + Workflows -->
+    <div class="lg:col-span-1 space-y-5">
+      <div class="bg-white rounded-xl shadow-sm p-6">
+        <h2 class="text-lg font-semibold mb-4">Upload Claim Data</h2>
+        <div class="upload-area" id="dropZone">
+          <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-2"></i>
+          <p class="text-sm text-gray-500 mb-2">Drag &amp; drop JSON or click to browse</p>
+          <input type="file" id="fileInput" accept=".json" class="hidden">
+        </div>
+        <div class="grid grid-cols-2 gap-3 mt-4">
+          <button id="sampleClaimBtn" class="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition text-sm">
+            <i class="fas fa-flask mr-1"></i>Sample
+          </button>
+          <button id="batchSampleBtn" class="bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition text-sm">
+            <i class="fas fa-layer-group mr-1"></i>Batch
+          </button>
+        </div>
+        <div id="uploadStatus" class="mt-3 text-xs text-blue-600 hidden">
+          <i class="fas fa-circle-notch fa-spin mr-1"></i>
+          <span id="uploadStatusText">Processing…</span>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm p-5">
+        <h2 class="text-sm font-semibold text-gray-600 mb-3">Recent Workflows</h2>
+        <div id="workflowList" class="text-sm text-gray-400 italic">No workflows yet</div>
+      </div>
+    </div>
+
+    <!-- Claims Table -->
+    <div class="lg:col-span-2">
+      <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b flex justify-between items-center">
+          <h2 class="text-lg font-semibold">Recent Claims</h2>
+          <button id="refreshBtn" class="text-sm text-blue-600 hover:text-blue-800">
+            <i class="fas fa-sync-alt mr-1"></i>Refresh
+          </button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200 text-sm">
+            <thead class="bg-gray-50 text-xs font-medium text-gray-500 uppercase">
+              <tr>
+                <th class="px-5 py-3 text-left">Claim ID</th>
+                <th class="px-5 py-3 text-left">Patient</th>
+                <th class="px-5 py-3 text-left">Code</th>
+                <th class="px-5 py-3 text-left">Decision</th>
+                <th class="px-5 py-3 text-left">Time</th>
+              </tr>
+            </thead>
+            <tbody id="claimsTableBody" class="divide-y divide-gray-200">
+              <tr><td colspan="5" class="px-6 py-8 text-center text-gray-400 italic">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── DOM ───────────────────────────────────────────────
+const loadingOverlay   = document.getElementById('loadingOverlay');
+const progressBar      = document.getElementById('progressBar');
+const currentClaimId   = document.getElementById('currentClaimId');
+const claimCounter     = document.getElementById('claimCounter');
+const agentLog         = document.getElementById('agentLog');
+const currentAgentName = document.getElementById('currentAgentName');
+const currentAgentMsg  = document.getElementById('currentAgentMessage');
+const currentAgentIcon = document.getElementById('currentAgentIcon');
+const voiceInterface   = document.getElementById('voiceInterface');
+const voiceStatusEl    = document.getElementById('voiceStatus');
+const voiceDot         = document.getElementById('voiceDot');
+const voiceTranscript  = document.getElementById('voiceTranscript');
+const decisionCard     = document.getElementById('decisionCard');
+const uploadStatus     = document.getElementById('uploadStatus');
+const uploadStatusText = document.getElementById('uploadStatusText');
+const openOverlayBtn   = document.getElementById('openOverlayBtn');
+
+const agentEls = {
+  '2' : { icon: document.getElementById('agent2Icon'),  status: document.getElementById('agent2Status')  },
+  '3' : { icon: document.getElementById('agent3Icon'),  status: document.getElementById('agent3Status')  },
+  '4' : { icon: document.getElementById('agent4Icon'),  status: document.getElementById('agent4Status')  },
+  '5a': { icon: document.getElementById('agent5aIcon'), status: document.getElementById('agent5aStatus') },
+  '5b': { icon: document.getElementById('agent5bIcon'), status: document.getElementById('agent5bStatus') },
+};
+
+const AGENT_ICONS = { '2':'fa-search','3':'fa-database','4':'fa-shield-alt','5a':'fa-paper-plane','5b':'fa-phone-alt' };
+const PROG_MAP    = {
+  '2-running':15,'2-complete':25,
+  '3-running':30,'3-complete':50,
+  '4-running':55,'4-complete':75,
+  '5a-running':78,'5a-complete':88,
+  '5b-running':90,'5b-complete':97,
+};
+
+// ─── State ─────────────────────────────────────────────
+let currentWorkflowId = null;
+let pollInterval      = null;
+let seenMessages      = new Set();
+let workflowDone      = false;
+let retryCount        = 0;
+const MAX_RETRIES     = 45;
+
+// ─── Overlay ───────────────────────────────────────────
+function showOverlay(){ loadingOverlay.style.display='flex'; openOverlayBtn.classList.add('hidden'); }
+function hideOverlay(){
+  loadingOverlay.style.display='none';
+  if(currentWorkflowId && !workflowDone) openOverlayBtn.classList.remove('hidden');
+}
+document.getElementById('closeOverlayBtn').addEventListener('click', hideOverlay);
+openOverlayBtn.addEventListener('click', showOverlay);
+
+// ─── Helpers ───────────────────────────────────────────
+function agentKey(agentStr){
+  const m = (agentStr||'').match(/(\d+)\s*([AB]?)/i);
+  if(!m) return null;
+  return m[1] + (m[2] ? m[2].toLowerCase() : '');
+}
+
+function resetAgents(){
+  Object.keys(agentEls).forEach(k=>{ agentEls[k].icon.className='agent-icon pending'; });
+  agentEls['2'].status.textContent='Policy Detector'; agentEls['3'].status.textContent='FHIR Updater';
+  agentEls['4'].status.textContent='Claim Validator'; agentEls['5a'].status.textContent='Approval Router';
+  agentEls['5b'].status.textContent='Voice Agent';
+}
+
+function addLogEntry(agent, message){
+  const entry = document.createElement('div');
+  entry.className='log-entry';
+  const t   = new Date().toLocaleTimeString('en-US',{hour12:false});
+  const cls = agent.toLowerCase().replace(/[^a-z0-9]/g,'');
+  entry.innerHTML = `<span class="log-time">[${t}]</span><span class="log-agent ${cls}">${agent}</span><span>${message}</span>`;
+  agentLog.appendChild(entry);
+  agentLog.scrollTop = agentLog.scrollHeight;
+  while(agentLog.children.length > 15) agentLog.removeChild(agentLog.firstChild);
+}
+
+// SINGLE definition of updateVoiceState
+function updateVoiceState(state, message){
+  document.querySelectorAll('.wave-bar').forEach(b=>{
+    b.classList.remove('speaking','listening');
+    if(state!=='idle') b.classList.add(state);
+  });
+  voiceDot.className = 'status-dot '+state;
+  if(message) voiceStatusEl.textContent = message;
+}
+
+function setProgress(pct){ progressBar.style.width = Math.min(pct,100)+'%'; }
+
+function showDecision(decision, reasoning){
+  const d = (decision||'').toUpperCase();
+  decisionCard.style.display='block';
+  decisionCard.className='decision-card '+(d==='APPROVED'?'approved':d==='REJECTED'?'rejected':'pending');
+  document.getElementById('decisionIcon').innerHTML=`<i class="fas ${d==='APPROVED'?'fa-check-circle':'fa-times-circle'}"></i>`;
+  document.getElementById('decisionTitle').textContent='Claim '+d;
+  document.getElementById('decisionReasoning').textContent=reasoning||'No reasoning provided';
+}
+
+// ─── Process one workflow message ──────────────────────
+function processMessage(msg){
+  const key = (msg.agent||'')+'|'+(msg.message||'');
+  if(seenMessages.has(key)) return;
+  seenMessages.add(key);
+
+  const agent   = msg.agent   || 'System';
+  const message = msg.message || '';
+  const status  = (msg.status || 'info').toLowerCase();
+
+  addLogEntry(agent, message);
+
+  const k = agentKey(agent);
+  if(k && agentEls[k]){
+    const iconState = status==='running'?'active':status==='complete'?'complete':status==='error'?'error':null;
+    if(iconState){
+      agentEls[k].icon.className='agent-icon '+iconState;
+      agentEls[k].status.textContent = message.slice(0,32)+(message.length>32?'…':'');
+    }
+    if(status==='running'){
+      currentAgentName.textContent = agent;
+      currentAgentMsg.textContent  = message;
+      currentAgentIcon.innerHTML   = `<i class="fas ${AGENT_ICONS[k]||'fa-cog'}"></i>`;
+    }
+    const pk = k+'-'+status;
+    if(PROG_MAP[pk]) setProgress(PROG_MAP[pk]);
+
+    // Voice interface — show when Agent 5B sends ANY message
+    if(k==='5b'){
+      voiceInterface.style.display='block';
+      if(status==='speaking'){
+        updateVoiceState('speaking','Agent speaking…');
+        voiceTranscript.innerHTML=`<i class="fas fa-volume-up mr-2"></i>${message}`;
+      } else if(status==='listening'){
+        updateVoiceState('listening','Listening for patient response…');
+      } else if(status==='response'){
+        voiceTranscript.innerHTML=`<i class="fas fa-quote-right mr-2"></i>${message}`;
+        updateVoiceState('idle','Response received');
+      } else {
+        updateVoiceState('idle', message);
+      }
+    }
+  }
+  if(agent==='Patient'){
+    voiceTranscript.innerHTML=`<i class="fas fa-user mr-2"></i>${message}`;
+  }
+}
+
+// ─── Poll single workflow ───────────────────────────────
+async function pollWorkflowStatus(wfId){
+  try{
+    const res  = await fetch(`/api/workflow/${wfId}/messages`);
+    if(!res.ok) return;
+    const data = await res.json();
+    if(Array.isArray(data.messages)) data.messages.forEach(processMessage);
+
+    if(data.status==='completed'){
+      workflowDone=true; setProgress(100);
+      addLogEntry('System','✅ Workflow complete!');
+      clearInterval(pollInterval);
+      // Get final decision
+      const r2   = await fetch(`/api/workflow/${wfId}`);
+      const full = await r2.json();
+      const vr   = full?.result?.validation_result;
+      if(vr) showDecision(vr.decision, vr.reasoning);
+      setTimeout(loadDashboardData, 1500);
+      return;
+    }
+    if(data.status==='failed'){
+      workflowDone=true; setProgress(100);
+      addLogEntry('System','❌ Workflow failed!');
+      clearInterval(pollInterval);
+    }
+  } catch(e){ console.error('Poll error:',e); }
+}
+
+// ─── Retry-polling until workflow appears ──────────────
+async function startPolling(){
+  retryCount++;
+  if(retryCount > MAX_RETRIES){
+    addLogEntry('System','⚠️ Timed out waiting for workflow. Check server logs.');
+    uploadStatus.classList.add('hidden');
+    return;
+  }
+  try{
+    const res = await fetch('/api/workflows');
+    if(!res.ok){ setTimeout(startPolling,1000); return; }
+    const list = await res.json();
+    if(!list||list.length===0){ setTimeout(startPolling,1000); return; }
+
+    const latest = list[0];
+    // Only attach to a workflow started in the last 90 seconds
+    const age = Date.now() - new Date(latest.start_time).getTime();
+    if(age > 90000){ setTimeout(startPolling,1000); return; }
+
+    currentWorkflowId = latest.id;
+    currentClaimId.textContent = `Claim ID: ${latest.claim_id||latest.id}`;
+    claimCounter.textContent   = `Workflow: ${latest.id}`;
+    if(pollInterval) clearInterval(pollInterval);
+    pollInterval = setInterval(()=>pollWorkflowStatus(currentWorkflowId), 1000);
+    uploadStatus.classList.add('hidden');
+    loadWorkflowList();
+  } catch(e){ setTimeout(startPolling,1000); }
+}
+
+// ─── Upload ────────────────────────────────────────────
+async function uploadFile(file){
+  if(!file.name.endsWith('.json')){ alert('Please upload a JSON file'); return; }
+  const fd = new FormData(); fd.append('file', file);
+
+  showOverlay(); resetAgents();
+  seenMessages.clear(); workflowDone=false; retryCount=0;
+  agentLog.innerHTML='';
+  decisionCard.style.display='none';
+  voiceInterface.style.display='none';
+  setProgress(5);
+  currentAgentName.textContent='Uploading…';
+  currentAgentMsg.textContent =file.name;
+  currentAgentIcon.innerHTML  ='<i class="fas fa-cloud-upload-alt"></i>';
+  uploadStatus.classList.remove('hidden');
+  uploadStatusText.textContent='Uploading file…';
+
+  try{
+    const res  = await fetch('/api/upload',{method:'POST',body:fd});
+    const data = await res.json();
+    if(data.error){ alert(data.error); hideOverlay(); return; }
+    addLogEntry('System',`Submitted ${data.claims||1} claim(s) — starting agents…`);
+    uploadStatusText.textContent='Agents running…';
+    setProgress(10);
+    setTimeout(startPolling, 500);
+  } catch(e){ alert('Upload failed: '+e.message); hideOverlay(); }
+}
+
+async function uploadSample(payload){
+  const blob = new Blob([JSON.stringify(payload)],{type:'application/json'});
+  await uploadFile(new File([blob],'sample.json',{type:'application/json'}));
+}
+
+document.getElementById('sampleClaimBtn').addEventListener('click',()=>
+  uploadSample({patient_id:'pat001',code:'J3420',dose:1500}));
+document.getElementById('batchSampleBtn').addEventListener('click',()=>
+  uploadSample([{patient_id:'pat001',code:'J3420',dose:1500},{patient_id:'pat002',code:'97110',units:2}]));
+
+const dropZone  = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+dropZone.addEventListener('click',()=>fileInput.click());
+dropZone.addEventListener('dragover', e=>{e.preventDefault();dropZone.classList.add('dragover');});
+dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('dragover');if(e.dataTransfer.files.length)uploadFile(e.dataTransfer.files[0]);});
+fileInput.addEventListener('change',e=>{if(e.target.files.length)uploadFile(e.target.files[0]);});
+
+// ─── Voice buttons ─────────────────────────────────────
+document.getElementById('voiceYesBtn').addEventListener('click',async()=>{
+  voiceTranscript.innerHTML='<i class="fas fa-quote-right mr-2"></i>"Yes, please correct it"';
+  updateVoiceState('speaking','Processing correction…');
+  addLogEntry('Patient','YES — agreed to correction');
+  if(currentWorkflowId) try{ await fetch(`/api/workflow/${currentWorkflowId}/voice-response`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({response:'YES'})}); }catch(e){}
+});
+document.getElementById('voiceNoBtn').addEventListener('click',async()=>{
+  voiceTranscript.innerHTML='<i class="fas fa-quote-right mr-2"></i>"No, I want to appeal"';
+  updateVoiceState('idle','Creating escalation ticket…');
+  addLogEntry('Patient','NO — wants to appeal');
+  if(currentWorkflowId) try{ await fetch(`/api/workflow/${currentWorkflowId}/voice-response`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({response:'NO'})}); }catch(e){}
+});
+
+// ─── Dashboard data ────────────────────────────────────
+async function loadDashboardData(){
+  try{
+    const [stats,claims]=await Promise.all([
+      fetch('/api/stats').then(r=>r.json()),
+      fetch('/api/claims').then(r=>r.json()),
+    ]);
+    document.getElementById('total-claims').textContent   =stats.total_claims||0;
+    document.getElementById('approved-claims').textContent=stats.approved||0;
+    document.getElementById('rejected-claims').textContent=stats.rejected||0;
+    document.getElementById('open-tickets').textContent   =stats.open_tickets||0;
+    const tbody=document.getElementById('claimsTableBody');
+    if(!Array.isArray(claims)||claims.length===0){
+      tbody.innerHTML='<tr><td colspan="5" class="px-6 py-8 text-center text-gray-400 italic">No claims found</td></tr>';
+    } else {
+      tbody.innerHTML=claims.slice(0,20).map(c=>{
+        const d=(c.decision||'').toUpperCase();
+        const bc=d==='APPROVED'?'badge-approved':d==='REJECTED'?'badge-rejected':'badge-pending';
+        const ts=c.processed_at||c.created_at||'';
+        const t=ts?new Date(ts).toLocaleTimeString():'—';
+        return `<tr class="hover:bg-gray-50">
+          <td class="px-5 py-3 font-mono text-xs">${c.id||'N/A'}</td>
+          <td class="px-5 py-3 text-sm">${c.patient_id||'N/A'}</td>
+          <td class="px-5 py-3 text-sm font-medium">${c.procedure_code||c.code||'—'}</td>
+          <td class="px-5 py-3"><span class="badge ${bc}">${d||'PENDING'}</span></td>
+          <td class="px-5 py-3 text-gray-400 text-xs">${t}</td>
+        </tr>`;
+      }).join('');
+    }
+  } catch(e){ console.error(e); }
+}
+
+async function loadWorkflowList(){
+  try{
+    const list=await fetch('/api/workflows').then(r=>r.json());
+    const el=document.getElementById('workflowList');
+    if(!Array.isArray(list)||list.length===0){ el.innerHTML='<p class="italic text-gray-400 text-sm">No workflows yet</p>'; return; }
+    el.innerHTML=list.slice(0,5).map(w=>{
+      const sc=w.status==='completed'?'text-green-600':w.status==='failed'?'text-red-500':'text-blue-500';
+      return `<div class="flex justify-between py-1 border-b border-gray-100 last:border-0 text-sm">
+        <span class="font-mono text-xs text-gray-600 truncate max-w-[130px]">${w.claim_id||w.id}</span>
+        <span class="${sc} text-xs font-semibold capitalize">${w.status||'running'}</span>
+      </div>`;
+    }).join('');
+  } catch(e){}
+}
+
+document.getElementById('refreshBtn').addEventListener('click',loadDashboardData);
+loadDashboardData();
+loadWorkflowList();
+setInterval(loadDashboardData,30000);
+</script>
+</body>
+</html>

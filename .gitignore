@@ -1,0 +1,177 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+pythonenv*
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.env
+.venv
+virtualenv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.project
+.pydevproject
+.settings/
+
+# Flask
+instance/
+.webassets-cache
+.env
+.flaskenv
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+data/
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+data/*.db-journal
+!data/.gitkeep
+
+# Uploads
+uploads/
+uploads/*
+!uploads/.gitkeep
+
+# Agent Output Files
+agents/agent2/policy_changes_*.json
+agents/agent2/*.log
+agents/agent3/*.log
+agents/agent3/policy_changes_*.json
+agents/agent3/agent3_output_*.json
+agents/agent4/*.log
+agents/agent4/agent4_results_*.json
+agents/agent4/corrections_from_agent5.json
+agents/agent5a/*.log
+agents/agent5a/agent5a_results_*.json
+agents/agent5b/*.log
+agents/agent5b/audio_output/
+agents/agent5b/corrected_claims/
+agents/agent5b/*.wav
+agents/agent5b/*.mp3
+
+# EDI Files
+edi_output/
+*.edi
+*.x12
+
+# Logs
+*.log
+logs/
+crawler.log
+agent2_*.log
+agent3_*.log
+agent4_*.log
+agent5a_*.log
+agent5b_*.log
+
+# API Keys
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+
+# PDF Downloads
+downloads/
+downloads/policies/
+*.pdf
+!**/*.pdf
+
+# Cache
+.cache/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyre/
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+.coverage.*
+*.cover
+.hypothesis/
+
+# Distribution
+dist/
+build/
+*.egg-info/
+*.egg
+
+# Docker
+.dockerignore
+Dockerfile
+docker-compose*.yml
+
+# System Files
+Thumbs.db
+*.bak
+*.tmp
+
+# Model Files
+*.h5
+*.pkl
+*.joblib
+sentence-transformers-cache/
+transformers-cache/
+
+# Temporary Files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Keep empty directories with .gitkeep
+!.gitkeep
+
+# Data directory - explicitly ignore everything except .gitkeep
+data/*
+!data/.gitkeep
+
+# Uploads directory - explicitly ignore everything except .gitkeep
+uploads/*
+!uploads/.gitkeep
+
+# Audio output
+**/audio_output/*
+!**/audio_output/.gitkeep
+
+# Corrected claims
+**/corrected_claims/*
+!**/corrected_claims/.gitkeep

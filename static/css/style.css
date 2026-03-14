@@ -1,0 +1,189 @@
+/* Custom styles for Healthcare Dashboard */
+
+/* Voice Waveform Animation */
+@keyframes wave {
+    0%, 100% {
+        transform: scaleY(0.3);
+    }
+    50% {
+        transform: scaleY(1);
+    }
+}
+
+.animate-wave {
+    animation: wave 1.2s ease-in-out infinite;
+    transform-origin: bottom;
+    height: 100%;
+}
+
+.wave-bar {
+    background-color: #3b82f6;
+    width: 4px;
+    height: 100%;
+    border-radius: 2px;
+}
+
+.animation-delay-100 {
+    animation-delay: 0.1s;
+}
+.animation-delay-200 {
+    animation-delay: 0.2s;
+}
+.animation-delay-300 {
+    animation-delay: 0.3s;
+}
+.animation-delay-400 {
+    animation-delay: 0.4s;
+}
+.animation-delay-500 {
+    animation-delay: 0.5s;
+}
+
+/* Agent Status Badges */
+.status-badge {
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-weight: 500;
+}
+
+.status-badge.running {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.status-badge.complete {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.status-badge.pending {
+    background-color: #f3f4f6;
+    color: #4b5563;
+}
+
+.status-badge.error {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+/* Progress Bars */
+.progress-bar {
+    transition: width 0.3s ease;
+}
+
+/* Ticket Items */
+.ticket-item {
+    transition: all 0.2s ease;
+}
+
+.ticket-item:hover {
+    transform: translateX(4px);
+}
+
+/* Upload Drop Zone */
+#dropZone.drag-over {
+    border-color: #3b82f6;
+    background-color: #eff6ff;
+}
+
+/* Voice Interface */
+#voiceInterface {
+    transition: all 0.3s ease;
+}
+
+/* Decision Result Animations */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#decisionResult:not(.hidden) {
+    animation: slideIn 0.3s ease-out;
+}
+
+/* Custom Scrollbar */
+.overflow-y-auto::-webkit-scrollbar {
+    width: 6px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Loading Spinner */
+.spinner {
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #3b82f6;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Table Row Hover */
+tbody tr:hover {
+    background-color: #f9fafb;
+}
+
+/* Status Indicators */
+.status-approved {
+    color: #059669;
+}
+
+.status-rejected {
+    color: #dc2626;
+}
+
+.status-pending {
+    color: #d97706;
+}
+
+/* Tooltip */
+.tooltip {
+    position: relative;
+    display: inline-block;
+}
+
+.tooltip .tooltip-text {
+    visibility: hidden;
+    width: 120px;
+    background-color: #1f2937;
+    color: #fff;
+    text-align: center;
+    border-radius: 4px;
+    padding: 4px;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    margin-left: -60px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-size: 12px;
+}
+
+.tooltip:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+}
