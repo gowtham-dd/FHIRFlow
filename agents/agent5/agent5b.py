@@ -2,10 +2,18 @@ import os
 import json
 import asyncio
 import logging
-import pyaudio
 import websockets
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
+
+# pyaudio requires portaudio system library — not available on Azure App Service.
+# Lazy import so the module loads cleanly on the server without audio hardware.
+try:
+    import pyaudio as _pyaudio
+    PYAUDIO_AVAILABLE = True
+except ImportError:
+    _pyaudio = None
+    PYAUDIO_AVAILABLE = False
 
 load_dotenv()
 
@@ -95,10 +103,10 @@ Respond with only YES or NO.
 
             await ws.send(json.dumps({"type": "Flush"}))
 
-            p = pyaudio.PyAudio()
+            p = _pyaudio.PyAudio()
 
             stream = p.open(
-                format=pyaudio.paInt16,
+                format=_pyaudio.paInt16,
                 channels=1,
                 rate=16000,
                 output=True
@@ -173,10 +181,10 @@ Respond with only YES or NO.
 
             print("🌐 STT Connected")
 
-            p = pyaudio.PyAudio()
+            p = _pyaudio.PyAudio()
 
             stream = p.open(
-                format=pyaudio.paInt16,
+                format=_pyaudio.paInt16,
                 channels=1,
                 rate=16000,
                 input=True,

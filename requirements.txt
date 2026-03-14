@@ -18,7 +18,6 @@ flask-socketio
 pypdf
 httpx
 websockets
-pyaudio
 pandas
 numpy
 gunicorn
