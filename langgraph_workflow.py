@@ -30,6 +30,7 @@ from agents.agent2.agent2 import PolicyChangeDetector
 from agents.agent3.agent3 import FHIRProcedureUpdater
 from agents.agent4.agent4 import ClaimsValidator
 from agents.agent5.agent5a import Agent5A_ApprovalRouter
+from ticket_notifier import raise_ticket, close_ticket
 # NOTE: VoiceAgent (agent5b) is NOT imported here to avoid Deepgram key crash;
 #       the workflow handles voice interaction via HTTP polling instead.
 
@@ -420,68 +421,73 @@ def _run_voice_agent_in_thread(claim: dict) -> str:
 
 def agent5b_voice(state: AgentState) -> AgentState:
     """
-    Agent 5B — Real Deepgram voice interaction.
-
-    Flow:
-      1. Tell UI the voice agent is active (UI shows waveform + transcript)
-      2. Spin VoiceAgent into its own thread+event-loop (avoids nested-loop deadlock)
-      3. VoiceAgent speaks the rejection reason via Deepgram TTS → PyAudio
-      4. Deepgram STT listens for patient's spoken YES/NO
-      5. Groq LLM classifies the utterance → YES / NO
-      6. If YES  → re-validate with alternative code → submit via Agent5A
-         If NO   → create escalation ticket
-      7. Mirror the final outcome to the UI
+    Agent 5B — Real Deepgram voice interaction + ticket lifecycle emails.
+ 
+    OPEN  ticket → as soon as claim is rejected and voice agent starts
+    CLOSE ticket → after patient responds:
+        RESOLVED  : patient said YES + corrected claim approved
+        ESCALATED : patient said NO
+        FAILED    : patient said YES but corrected claim still rejected
     """
     state['current_step'] = 'agent5b'
     state = add_message(state, 'Agent 5B', '🎤 Voice agent activated', 'running')
     state = add_message(state, 'Agent 5B', 'Connecting to Deepgram TTS…', 'running')
     time.sleep(0.5)
-
+ 
     try:
-        decision = state['validation_result']
-        claim_id = decision.get('claim_id', state.get('claim_id', 'unknown'))
-        reason   = (decision.get('reasoning') or 'No reason provided')[:200]
-
-        # Build the claim dict that VoiceAgent expects
+        decision  = state['validation_result']
+        claim_id  = decision.get('claim_id', state.get('claim_id', 'unknown'))
+        reason    = (decision.get('reasoning') or 'No reason provided')[:200]
+ 
+        # ── 1. OPEN the ticket immediately ────────────────────────────────────
+        ticket_id = raise_ticket(state, decision)
+        state = add_message(
+            state, 'Agent 5B',
+            f'🎫 Ticket {ticket_id} raised — rejection reason emailed', 'info'
+        )
+ 
+        # ── 2. Build voice payload ────────────────────────────────────────────
         voice_claim = {
-            'claim_id':  claim_id,
-            'decision':  decision.get('decision', 'REJECTED'),
-            'reasoning': reason,
-            'patient_id': decision.get('patient_id', state.get('patient_id', '')),
+            'claim_id':               claim_id,
+            'decision':               decision.get('decision', 'REJECTED'),
+            'reasoning':              reason,
+            'patient_id':             decision.get('patient_id', state.get('patient_id', '')),
             'suggested_alternatives': decision.get('suggested_alternatives', []),
         }
-
-        # ── Mirror the TTS text to the UI ────────────────────────────────────
+ 
         intro_text = (
             f"Hello. I am calling regarding claim {claim_id}. "
             f"It was rejected because {reason}. "
             f"Would you like us to correct it?"
         )
         state = add_message(state, 'Agent 5B', f'🔊 Speaking: "{intro_text[:120]}…"', 'speaking')
-
-        # ── Run real VoiceAgent in isolated thread ────────────────────────────
         state = add_message(state, 'Agent 5B',
             '📞 Calling patient — Deepgram TTS active, microphone open…', 'speaking')
-
+ 
+        # ── 3. Run real VoiceAgent in isolated thread ─────────────────────────
         intent = _run_voice_agent_in_thread(voice_claim)   # blocks until done
-
-        # ── Mirror patient response to UI ─────────────────────────────────────
+ 
+        # ── 4. Mirror patient response to UI ──────────────────────────────────
         if intent == 'YES':
             state = add_message(state, 'Patient', '🗣️ "Yes, please correct it"', 'response')
         else:
             state = add_message(state, 'Patient', '🗣️ "No, I want to keep it as is"', 'response')
         time.sleep(0.5)
-
-        # ── Handle YES ────────────────────────────────────────────────────────
+ 
+        # ── 5a. Patient said YES ───────────────────────────────────────────────
         if intent == 'YES':
             suggested = decision.get('suggested_alternatives', ['G0008'])
             alt_code  = suggested[0] if suggested else 'G0008'
-
+ 
+            # Flatten if alternative is a dict  {"code": "G0008", ...}
+            if isinstance(alt_code, dict):
+                alt_code = alt_code.get('code') or alt_code.get('description') or 'G0008'
+ 
             state = add_message(state, 'Agent 5B', '✅ Patient agreed to correction', 'complete')
             state = add_message(state, 'Agent 5B',
                 f"Correcting code: {decision.get('procedure_code', '?')} → {alt_code}…", 'running')
             time.sleep(1)
-
+ 
             corrected_claim = {
                 'id':                f"{claim_id}_corrected",
                 'original_claim_id': claim_id,
@@ -490,10 +496,10 @@ def agent5b_voice(state: AgentState) -> AgentState:
                 'voice_confirmed':   True,
                 'date_of_service':   datetime.now().strftime('%Y-%m-%d'),
             }
-
+ 
             state = add_message(state, 'Agent 5B', 'Re-validating corrected claim…', 'running')
             time.sleep(1)
-
+ 
             from app import get_embeddings
             import agents.agent4.agent4 as agent4_module
             orig = agent4_module.download_embeddings
@@ -501,37 +507,83 @@ def agent5b_voice(state: AgentState) -> AgentState:
             validator    = ClaimsValidator(DB_PATH)
             new_decision = validator.validate_claim(corrected_claim)
             agent4_module.download_embeddings = orig
-
+ 
             if new_decision.get('decision') == 'APPROVED':
+                # ── CLOSE ticket: RESOLVED ────────────────────────────────────
                 state = add_message(state, 'Agent 5B', '✅ Corrected claim APPROVED!', 'complete')
                 router = Agent5A_ApprovalRouter(DB_PATH)
                 router.process_approved_claim(new_decision)
                 state['final_decision'] = 'APPROVED_AFTER_CORRECTION'
-            else:
-                ticket_id = _create_ticket_local(decision,
-                    'Patient agreed but corrected claim still rejected')
-                state['voice_result']   = {'ticket_created': ticket_id}
-                state['final_decision'] = 'TICKET_CREATED'
+ 
+                close_ticket(
+                    ticket_id  = ticket_id,
+                    state      = state,
+                    decision   = decision,
+                    outcome    = 'RESOLVED',
+                    corrected_code = alt_code,
+                    extra_notes = (
+                        f"Original rejection reason:\n{reason}\n\n"
+                        f"Fix applied: procedure code changed from "
+                        f"{decision.get('procedure_code', 'N/A')} → {alt_code}.\n"
+                        f"Re-validated by Groq LLM — result: APPROVED.\n"
+                        f"Claim submitted to payer via Agent 5A."
+                    )
+                )
                 state = add_message(state, 'Agent 5B',
-                    f'🎫 Ticket created: {ticket_id}', 'complete')
-
-        # ── Handle NO ─────────────────────────────────────────────────────────
+                    f'📧 Ticket {ticket_id} closed as RESOLVED — email sent', 'complete')
+ 
+            else:
+                # ── CLOSE ticket: FAILED ──────────────────────────────────────
+                state['final_decision'] = 'TICKET_CREATED'
+                state['voice_result']   = {'ticket_created': ticket_id}
+ 
+                close_ticket(
+                    ticket_id  = ticket_id,
+                    state      = state,
+                    decision   = decision,
+                    outcome    = 'FAILED',
+                    corrected_code = alt_code,
+                    extra_notes = (
+                        f"Original rejection reason:\n{reason}\n\n"
+                        f"Patient agreed to correction. Code changed to {alt_code}.\n"
+                        f"Second Groq LLM validation: still REJECTED.\n"
+                        f"Second rejection reason: "
+                        f"{new_decision.get('reasoning', 'N/A')[:300]}\n\n"
+                        f"Manual clinical review required."
+                    )
+                )
+                state = add_message(state, 'Agent 5B',
+                    f'📧 Ticket {ticket_id} closed as FAILED — email sent', 'complete')
+ 
+        # ── 5b. Patient said NO ───────────────────────────────────────────────
         else:
-            ticket_id = _create_ticket_local(decision,
-                'Patient refused correction — escalated for prior auth review')
-            state['voice_result']   = {'ticket_created': ticket_id}
             state['final_decision'] = 'PATIENT_REFUSED'
+            state['voice_result']   = {'ticket_created': ticket_id}
+ 
+            close_ticket(
+                ticket_id  = ticket_id,
+                state      = state,
+                decision   = decision,
+                outcome    = 'ESCALATED',
+                extra_notes = (
+                    f"Original rejection reason:\n{reason}\n\n"
+                    f"Patient was contacted via voice agent and declined correction.\n"
+                    f"No automated fix was applied.\n"
+                    f"Claim escalated for manual prior-authorization review."
+                )
+            )
             state = add_message(state, 'Agent 5B',
-                f'🎫 Escalation ticket: {ticket_id}', 'complete')
-
+                f'📧 Ticket {ticket_id} closed as ESCALATED — email sent', 'complete')
+ 
         state['completed_steps'].append('agent5b')
-        # Refresh claim row with final outcome
         write_claim_to_dashboard(state['workflow_id'], state)
-
+ 
     except Exception as e:
         state['errors'].append(f"Agent 5B error: {e}")
         state = add_message(state, 'Agent 5B', f'Error: {e}', 'error')
-
+        if not state.get('final_decision'):
+            state['final_decision'] = 'ERROR'
+ 
     return state
 
 # ── Routing ────────────────────────────────────────────────────────────────────

@@ -1,21 +1,27 @@
-import json
-import requests
+# fix_tickets_table.py
+import sqlite3
 
-# Test with a simple claim
-test_claim = {
-    "patient_id": "pat001",
-    "code": "J3420",
-    "dose": 1500
-}
+DB_PATH = "data/claims.db"
 
-# Save to a temp file
-with open('test_claim.json', 'w') as f:
-    json.dump(test_claim, f)
+conn = sqlite3.connect(DB_PATH)
 
-# Upload to your app
-with open('test_claim.json', 'rb') as f:
-    files = {'file': ('test_claim.json', f, 'application/json')}
-    response = requests.post('http://localhost:5000/api/upload', files=files)
-    
-print(f"Status: {response.status_code}")
-print(f"Response: {response.text}")
+# Check existing columns
+cols = [row[1] for row in conn.execute("PRAGMA table_info(tickets)").fetchall()]
+print("Existing columns:", cols)
+
+# Add missing columns only if they don't exist
+if "outcome" not in cols:
+    conn.execute("ALTER TABLE tickets ADD COLUMN outcome TEXT")
+    print("✅ Added: outcome")
+
+if "open_email_sent" not in cols:
+    conn.execute("ALTER TABLE tickets ADD COLUMN open_email_sent INTEGER DEFAULT 0")
+    print("✅ Added: open_email_sent")
+
+if "closed_email_sent" not in cols:
+    conn.execute("ALTER TABLE tickets ADD COLUMN closed_email_sent INTEGER DEFAULT 0")
+    print("✅ Added: closed_email_sent")
+
+conn.commit()
+conn.close()
+print("\n✅ tickets table updated — restart your app now")
